@@ -40,6 +40,8 @@ const speedSlider = document.getElementById('speedSlider');
 const speedValue = document.getElementById('speedValue');
 const volumeSlider = document.getElementById('volumeSlider');
 const volumeValue = document.getElementById('volumeValue');
+const recordedBpmInput = document.getElementById('recordedBpm');
+const targetBpmInput = document.getElementById('targetBpm');
 const waveformCanvas = document.getElementById('waveformCanvas');
 const playhead = document.getElementById('playhead');
 const waveformProgress = document.getElementById('waveformProgress');
@@ -202,9 +204,14 @@ fileInput.addEventListener('change', (event) => {
     return;
   }
 
-  const supported = files.filter((file) => /\.(mp3|wav|mp4|mov)$/i.test(file.name));
+  // Accept all audio and video files
+  const supported = files.filter((file) => {
+    const type = file.type;
+    return type.startsWith('audio/') || type.startsWith('video/');
+  });
+  
   if (!supported.length) {
-    playerStatus.textContent = 'No supported files selected.';
+    playerStatus.textContent = 'No supported audio or video files selected.';
     return;
   }
 
@@ -865,3 +872,81 @@ function updateBeatDisplay(beatNum, isAccented) {
     }, 100);
   }
 }
+
+// BPM-based speed control
+function calculateAndApplyBpmSpeed() {
+  const recordedBpm = Number(recordedBpmInput.value);
+  const targetBpm = Number(targetBpmInput.value);
+  
+  // Only calculate if both values are present and valid
+  if (recordedBpm > 0 && targetBpm > 0) {
+    const timeStretch = targetBpm / recordedBpm;
+    // Clamp the result between 0.1 and 2.0 to match slider limits
+    const clampedSpeed = Math.max(0.1, Math.min(2.0, timeStretch));
+    
+    // Update the speed slider and display
+    speedSlider.value = clampedSpeed.toFixed(1);
+    speedValue.textContent = `${clampedSpeed.toFixed(1)}x`;
+    
+    // Apply to audio playback
+    audio.playbackRate = clampedSpeed;
+    
+    log(`BPM Speed: recorded=${recordedBpm}, target=${targetBpm}, speed=${clampedSpeed.toFixed(2)}x`);
+    saveSettings();
+  }
+}
+
+// Event listeners for BPM inputs
+recordedBpmInput.addEventListener('input', () => {
+  calculateAndApplyBpmSpeed();
+  saveBpmValues();
+});
+
+targetBpmInput.addEventListener('input', () => {
+  calculateAndApplyBpmSpeed();
+  saveBpmValues();
+});
+
+// Select all text when BPM inputs are focused
+recordedBpmInput.addEventListener('focus', () => {
+  recordedBpmInput.select();
+});
+
+targetBpmInput.addEventListener('focus', () => {
+  targetBpmInput.select();
+});
+
+// Save and load BPM values
+function saveBpmValues() {
+  try {
+    localStorage.setItem('musicTools_recordedBpm', recordedBpmInput.value);
+    localStorage.setItem('musicTools_targetBpm', targetBpmInput.value);
+  } catch (err) {
+    console.warn('Failed to save BPM values:', err);
+  }
+}
+
+function loadBpmValues() {
+  try {
+    const savedRecordedBpm = localStorage.getItem('musicTools_recordedBpm');
+    const savedTargetBpm = localStorage.getItem('musicTools_targetBpm');
+    
+    if (savedRecordedBpm !== null && savedRecordedBpm !== '') {
+      recordedBpmInput.value = savedRecordedBpm;
+    }
+    
+    if (savedTargetBpm !== null && savedTargetBpm !== '') {
+      targetBpmInput.value = savedTargetBpm;
+    }
+    
+    // Only recalculate speed if both values exist and are not empty
+    if (savedRecordedBpm && savedRecordedBpm !== '' && savedTargetBpm && savedTargetBpm !== '') {
+      calculateAndApplyBpmSpeed();
+    }
+  } catch (err) {
+    console.warn('Failed to load BPM values:', err);
+  }
+}
+
+// Load BPM values on initialization
+loadBpmValues();

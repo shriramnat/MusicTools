@@ -26,7 +26,7 @@
                 </svg>
                 Add Files
               </label>
-              <input id="fileInput" type="file" accept=".mp3,.wav,.mp4,.mov,audio/*,video/mp4,video/quicktime" multiple />
+              <input id="fileInput" type="file" multiple />
             </div>
             
             <div class="playlist-container">
@@ -92,6 +92,16 @@
               <span id="speedValue">1.0x</span>
             </label>
             <input id="speedSlider" type="range" min="0.1" max="2" step="0.1" value="1" />
+            <div class="bpm-inputs">
+              <div class="bpm-input-group">
+                <label for="recordedBpm">Recorded BPM</label>
+                <input type="number" id="recordedBpm" class="bpm-text-input" placeholder="..." min="1" max="999" />
+              </div>
+              <div class="bpm-input-group">
+                <label for="targetBpm">Target BPM</label>
+                <input type="number" id="targetBpm" class="bpm-text-input" placeholder="..." min="1" max="999" />
+              </div>
+            </div>
           </div>
 
           <div class="transport-controls">

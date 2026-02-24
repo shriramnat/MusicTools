@@ -372,6 +372,66 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* BPM Inputs */
+.bpm-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.bpm-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bpm-input-group label {
+  font-size: 11px;
+  color: var(--text-gray);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bpm-text-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--black);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.bpm-text-input::placeholder {
+  color: var(--text-gray);
+  opacity: 0.5;
+}
+
+.bpm-text-input:hover {
+  border-color: var(--text-gray);
+}
+
+.bpm-text-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  background: var(--light-gray);
+}
+
+/* Hide number input spinners for BPM inputs */
+.bpm-text-input::-webkit-inner-spin-button,
+.bpm-text-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bpm-text-input[type=number] {
+  -moz-appearance: textfield;
+}
+
 /* Transport Controls */
 .transport-controls {
   display: flex;
