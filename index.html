@@ -45,11 +45,11 @@
         <section id="metronome" class="panel" role="tabpanel" hidden>
           <div class="metronome-content">
             <div class="bpm-display">
-              <span class="bpm-value" id="bpmValue">120</span>
+              <input type="number" class="bpm-input" id="bpmInput" min="1" max="300" value="120" />
               <span class="bpm-label">BPM</span>
             </div>
             
-            <input id="bpmSlider" type="range" min="10" max="300" step="1" value="120" class="bpm-slider" />
+            <input id="bpmSlider" type="range" min="1" max="300" step="1" value="120" class="bpm-slider" />
             
             <div class="accent-group">
               <label for="accentSelect">Accent Every</label>
@@ -64,6 +64,8 @@
                 <option value="8">8 beats</option>
               </select>
             </div>
+            
+            <div class="beat-counter" id="beatCounter">-</div>
           </div>
         </section>
       </main>

@@ -506,12 +506,39 @@ input[type="range"]::-moz-range-thumb:hover {
   gap: var(--spacing-xs);
 }
 
-.bpm-value {
+.bpm-input {
   font-size: 72px;
   font-weight: 600;
   letter-spacing: -2px;
   color: var(--black);
   font-variant-numeric: tabular-nums;
+  border: none;
+  background: transparent;
+  text-align: center;
+  width: 200px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.bpm-input:hover {
+  background: var(--light-gray);
+  border-radius: var(--radius-sm);
+}
+
+.bpm-input:focus {
+  background: var(--light-gray);
+  border-radius: var(--radius-sm);
+}
+
+/* Hide number input spinners */
+.bpm-input::-webkit-inner-spin-button,
+.bpm-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bpm-input[type=number] {
+  -moz-appearance: textfield;
 }
 
 .bpm-label {
@@ -560,6 +587,29 @@ input[type="range"]::-moz-range-thumb:hover {
 .accent-select:focus {
   outline: none;
   border-color: var(--accent-blue);
+}
+
+.beat-counter {
+  font-size: 48px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  text-align: center;
+  min-width: 80px;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--light-gray);
+  border-radius: var(--radius-md);
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--spacing-md);
+  transition: all 0.1s ease;
+}
+
+.beat-counter.accent {
+  background: var(--accent-blue);
+  color: var(--white);
+  transform: scale(1.1);
 }
 
 /* Metronome Controls */

@@ -50,10 +50,11 @@ const playerStatus = document.getElementById('playerStatus');
 
 // Metronome elements (defined here to avoid initialization errors)
 const bpmSlider = document.getElementById('bpmSlider');
-const bpmValue = document.getElementById('bpmValue');
+const bpmInput = document.getElementById('bpmInput');
 const accentSelect = document.getElementById('accentSelect');
 const metroToggleBtn = document.getElementById('metroToggleBtn');
 const metroStatus = document.getElementById('metroStatus');
+const beatCounterEl = document.getElementById('beatCounter');
 
 const audio = new Audio();
 audio.preload = 'metadata';
@@ -649,7 +650,7 @@ function loadSettings() {
     
     if (savedBpm !== null) {
       bpmSlider.value = savedBpm;
-      bpmValue.textContent = savedBpm;
+      bpmInput.value = savedBpm;
     }
     
     if (savedAccent !== null) {
@@ -683,19 +684,68 @@ function ensureAudioContext() {
 }
 
 function playClick(time, accented) {
-  const osc = audioContext.createOscillator();
-  const gain = audioContext.createGain();
+  if (accented) {
+    // CLAP sound - combination of noise burst and low frequency punch
+    
+    // Create noise for the clap body
+    const bufferSize = audioContext.sampleRate * 0.15; // 150ms
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    // Generate white noise
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    
+    const noise = audioContext.createBufferSource();
+    noise.buffer = buffer;
+    
+    // Filter the noise to sound more like a clap (focus midrange frequencies)
+    const bandpass = audioContext.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.value = 1000;
+    bandpass.Q.value = 2;
+    
+    // Noise envelope for sharp attack and quick decay
+    const noiseGain = audioContext.createGain();
+    noiseGain.gain.setValueAtTime(0.4, time);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.15);
+    
+    // Low frequency "thump" for clap body
+    const lowOsc = audioContext.createOscillator();
+    lowOsc.frequency.value = 150;
+    lowOsc.type = 'sine';
+    
+    const lowGain = audioContext.createGain();
+    lowGain.gain.setValueAtTime(0.3, time);
+    lowGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
+    
+    // Connect clap components
+    noise.connect(bandpass).connect(noiseGain).connect(audioContext.destination);
+    lowOsc.connect(lowGain).connect(audioContext.destination);
+    
+    noise.start(time);
+    noise.stop(time + 0.15);
+    lowOsc.start(time);
+    lowOsc.stop(time + 0.08);
+    
+  } else {
+    // TAP sound - original simple beep
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
 
-  osc.type = accented ? 'square' : 'triangle';
-  osc.frequency.value = accented ? CLAP_FREQUENCY : TICK_FREQUENCY;
+    osc.type = 'triangle';
+    osc.frequency.value = TICK_FREQUENCY;
 
-  gain.gain.setValueAtTime(0.0001, time);
-  gain.gain.exponentialRampToValueAtTime(accented ? 0.35 : 0.2, time + 0.005);
-  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.2, time + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
 
-  osc.connect(gain).connect(audioContext.destination);
-  osc.start(time);
-  osc.stop(time + 0.09);
+    osc.connect(gain).connect(audioContext.destination);
+    osc.start(time);
+    osc.stop(time + 0.09);
+  }
 }
 
 function scheduleBeats() {
@@ -704,8 +754,16 @@ function scheduleBeats() {
   const beatInterval = 60.0 / bpm;
 
   while (nextBeatTime < audioContext.currentTime + SCHEDULE_AHEAD_TIME) {
-    const isAccented = accentInterval !== 0 && beatCounter % accentInterval === accentInterval - 1;
+    // Clap on the FIRST beat of each measure (when beatCounter % accentInterval === 0)
+    const isAccented = accentInterval !== 0 && beatCounter % accentInterval === 0;
     playClick(nextBeatTime, isAccented);
+    
+    // Schedule beat counter update to match the actual beat time
+    const currentBeatCount = beatCounter;
+    const currentIsAccented = isAccented;
+    setTimeout(() => {
+      updateBeatDisplay(currentBeatCount, currentIsAccented);
+    }, (nextBeatTime - audioContext.currentTime) * 1000);
     
     nextBeatTime += beatInterval;
     beatCounter += 1;
@@ -740,15 +798,40 @@ function startMetronome() {
   metroStatus.textContent = `Running at ${bpmSlider.value} BPM.`;
 }
 
+// BPM slider updates input
 bpmSlider.addEventListener('input', () => {
-  bpmValue.textContent = bpmSlider.value;
+  bpmInput.value = bpmSlider.value;
   if (metronomeRunning) {
     metroStatus.textContent = `Running at ${bpmSlider.value} BPM.`;
   }
   saveSettings();
 });
 
+// BPM input updates slider
+bpmInput.addEventListener('input', () => {
+  let value = Number(bpmInput.value);
+  // Clamp value between 1 and 300
+  if (value < 1) value = 1;
+  if (value > 300) value = 300;
+  
+  bpmInput.value = value;
+  bpmSlider.value = value;
+  
+  if (metronomeRunning) {
+    metroStatus.textContent = `Running at ${value} BPM.`;
+  }
+  saveSettings();
+});
+
+// Select all text when BPM input is focused
+bpmInput.addEventListener('focus', () => {
+  bpmInput.select();
+});
+
 accentSelect.addEventListener('change', () => {
+  beatCounter = 0; // Reset counter when accent changes
+  beatCounterEl.textContent = '-';
+  beatCounterEl.classList.remove('accent');
   saveSettings();
 });
 
@@ -759,3 +842,26 @@ metroToggleBtn.addEventListener('click', () => {
     stopMetronome();
   }
 });
+
+// Update beat counter display
+function updateBeatDisplay(beatNum, isAccented) {
+  const accentInterval = Number(accentSelect.value);
+  
+  if (accentInterval === 0 || !metronomeRunning) {
+    beatCounterEl.textContent = '-';
+    beatCounterEl.classList.remove('accent');
+    return;
+  }
+  
+  // Calculate which beat number to display (1-based)
+  const currentBeat = (beatNum % accentInterval) + 1;
+  beatCounterEl.textContent = currentBeat;
+  
+  // Highlight on first beat (clap)
+  if (isAccented) {
+    beatCounterEl.classList.add('accent');
+    setTimeout(() => {
+      beatCounterEl.classList.remove('accent');
+    }, 100);
+  }
+}
