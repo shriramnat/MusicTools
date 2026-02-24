@@ -205,9 +205,19 @@ fileInput.addEventListener('change', (event) => {
   }
 
   // Accept all audio and video files
+  // Also accept files without MIME type if they have common audio/video extensions
   const supported = files.filter((file) => {
     const type = file.type;
-    return type.startsWith('audio/') || type.startsWith('video/');
+    const name = file.name.toLowerCase();
+    
+    // Check MIME type
+    if (type && (type.startsWith('audio/') || type.startsWith('video/'))) {
+      return true;
+    }
+    
+    // If no MIME type or unrecognized, check common extensions
+    const audioVideoExtensions = /\.(mp3|wav|ogg|m4a|aac|flac|wma|aiff|ape|opus|webm|mp4|mov|avi|mkv|wmv|flv|3gp|m4v)$/i;
+    return audioVideoExtensions.test(name);
   });
   
   if (!supported.length) {
