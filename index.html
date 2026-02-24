@@ -148,6 +148,18 @@
       </div>
     </div>
 
+    <!-- Debug Log Panel -->
+    <div id="debugPanel" style="position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 11px; max-height: 200px; overflow-y: auto; border-top: 2px solid #0f0; padding: 8px; z-index: 9999; display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <strong style="color: #ff0;">DEBUG LOG</strong>
+        <div>
+          <button id="clearDebugBtn" style="background: #333; color: #0f0; border: 1px solid #0f0; padding: 2px 8px; margin-right: 4px; cursor: pointer;">Clear</button>
+          <button id="toggleDebugBtn" style="background: #333; color: #f00; border: 1px solid #f00; padding: 2px 8px; cursor: pointer;">Hide</button>
+        </div>
+      </div>
+      <div id="debugLog" style="white-space: pre-wrap; word-break: break-all; user-select: text;"></div>
+    </div>
+
     <script src="app.js"></script>
   </body>
 </html>

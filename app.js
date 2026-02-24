@@ -75,7 +75,92 @@ function log(...args) {
   }
 }
 
+// Debug panel functionality
+const debugPanel = document.getElementById('debugPanel');
+const debugLog = document.getElementById('debugLog');
+const clearDebugBtn = document.getElementById('clearDebugBtn');
+const toggleDebugBtn = document.getElementById('toggleDebugBtn');
+
+function debugMsg(message, type = 'info') {
+  const timestamp = new Date().toLocaleTimeString();
+  const colors = {
+    info: '#0f0',
+    warn: '#ff0',
+    error: '#f00',
+    success: '#0ff'
+  };
+  const color = colors[type] || colors.info;
+  
+  const entry = `[${timestamp}] ${message}\n`;
+  debugLog.innerHTML += `<span style="color:${color}">${entry}</span>`;
+  debugLog.scrollTop = debugLog.scrollHeight;
+  
+  console.log(`[DEBUG-${type.toUpperCase()}] ${message}`);
+}
+
+// Show debug panel on page load
+debugPanel.style.display = 'block';
+debugMsg('Debug panel initialized', 'success');
+debugMsg(`User Agent: ${navigator.userAgent}`, 'info');
+
+clearDebugBtn.addEventListener('click', () => {
+  debugLog.innerHTML = '';
+  debugMsg('Log cleared', 'info');
+});
+
+toggleDebugBtn.addEventListener('click', () => {
+  if (debugPanel.style.display === 'none') {
+    debugPanel.style.display = 'block';
+    toggleDebugBtn.textContent = 'Hide';
+  } else {
+    debugPanel.style.display = 'none';
+    toggleDebugBtn.textContent = 'Show';
+  }
+});
+
+// Comprehensive audio event logging
+audio.addEventListener('loadstart', () => {
+  debugMsg('[AUDIO] loadstart - browser started to load', 'info');
+});
+
+audio.addEventListener('durationchange', () => {
+  debugMsg(`[AUDIO] durationchange - duration: ${audio.duration}`, 'info');
+});
+
+audio.addEventListener('loadedmetadata', () => {
+  debugMsg(`[AUDIO] loadedmetadata - duration: ${audio.duration}, ready: ${audio.readyState}`, 'success');
+});
+
+audio.addEventListener('loadeddata', () => {
+  debugMsg(`[AUDIO] loadeddata - ready state: ${audio.readyState}`, 'info');
+});
+
+audio.addEventListener('canplay', () => {
+  debugMsg('[AUDIO] canplay - enough data to play', 'success');
+});
+
+audio.addEventListener('canplaythrough', () => {
+  debugMsg('[AUDIO] canplaythrough - can play without buffering', 'success');
+});
+
+audio.addEventListener('playing', () => {
+  debugMsg('[AUDIO] playing - playback has begun', 'success');
+});
+
+audio.addEventListener('waiting', () => {
+  debugMsg('[AUDIO] waiting - buffering...', 'warn');
+});
+
+audio.addEventListener('seeking', () => {
+  debugMsg(`[AUDIO] seeking - to ${audio.currentTime}`, 'info');
+});
+
+audio.addEventListener('seeked', () => {
+  debugMsg(`[AUDIO] seeked - completed at ${audio.currentTime}`, 'info');
+});
+
 audio.addEventListener('ended', () => {
+  debugMsg('[AUDIO] ended - playback finished', 'info');
   if (currentTrackIndex < playlist.length - 1) {
     currentTrackIndex += 1;
     loadTrack(currentTrackIndex, true);
@@ -87,6 +172,61 @@ audio.addEventListener('ended', () => {
     playPauseBtn.setAttribute('aria-label', 'Play');
     playerStatus.textContent = 'Playlist finished.';
   }
+});
+
+audio.addEventListener('error', (e) => {
+  const error = audio.error;
+  let errorMsg = 'Unknown error';
+  
+  if (error) {
+    switch (error.code) {
+      case error.MEDIA_ERR_ABORTED:
+        errorMsg = 'MEDIA_ERR_ABORTED - playback aborted';
+        break;
+      case error.MEDIA_ERR_NETWORK:
+        errorMsg = 'MEDIA_ERR_NETWORK - network error';
+        break;
+      case error.MEDIA_ERR_DECODE:
+        errorMsg = 'MEDIA_ERR_DECODE - decode error';
+        break;
+      case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+        errorMsg = 'MEDIA_ERR_SRC_NOT_SUPPORTED - format not supported';
+        break;
+      default:
+        errorMsg = `Error code: ${error.code}`;
+    }
+    
+    if (error.message) {
+      errorMsg += ` - ${error.message}`;
+    }
+  }
+  
+  debugMsg(`[AUDIO] ERROR: ${errorMsg}`, 'error');
+  debugMsg(`  src: ${audio.src}`, 'error');
+  debugMsg(`  networkState: ${audio.networkState}`, 'error');
+  debugMsg(`  readyState: ${audio.readyState}`, 'error');
+  
+  playerStatus.textContent = `Error: ${errorMsg}`;
+});
+
+audio.addEventListener('stalled', () => {
+  debugMsg('[AUDIO] stalled - download stalled', 'warn');
+});
+
+audio.addEventListener('suspend', () => {
+  debugMsg('[AUDIO] suspend - download suspended', 'info');
+});
+
+audio.addEventListener('abort', () => {
+  debugMsg('[AUDIO] abort - download aborted', 'warn');
+});
+
+audio.addEventListener('emptied', () => {
+  debugMsg('[AUDIO] emptied - media element reset', 'info');
+});
+
+audio.addEventListener('ratechange', () => {
+  debugMsg(`[AUDIO] ratechange - playback rate: ${audio.playbackRate}`, 'info');
 });
 
 let playlist = [];
@@ -167,29 +307,43 @@ function removeTrack(index) {
 }
 
 function loadTrack(index, autoplay) {
+  debugMsg(`--- LOAD TRACK (index=${index}, autoplay=${autoplay}) ---`, 'info');
   const track = playlist[index];
   if (!track) {
+    debugMsg('Track not found in playlist', 'error');
     return;
   }
+  
+  debugMsg(`Track: ${track.file.name}`, 'info');
+  debugMsg(`Object URL: ${track.url}`, 'info');
   
   const playIcon = playPauseBtn.querySelector('.play-icon');
   const pauseIcon = playPauseBtn.querySelector('.pause-icon');
   
+  debugMsg(`Setting audio.src to: ${track.url}`, 'info');
   audio.src = track.url;
-  audio.playbackRate = Number(speedSlider.value);
+  
+  const playbackRate = Number(speedSlider.value);
+  debugMsg(`Setting playbackRate to: ${playbackRate}`, 'info');
+  audio.playbackRate = playbackRate;
+  
   renderPlaylist();
   playerStatus.textContent = `Selected: ${track.file.name}`;
 
   if (autoplay) {
+    debugMsg('Attempting autoplay...', 'info');
     audio.play().then(() => {
+      debugMsg('Autoplay successful', 'success');
       playIcon.style.display = 'none';
       pauseIcon.style.display = 'block';
       playPauseBtn.setAttribute('aria-label', 'Pause');
       playerStatus.textContent = `Playing: ${track.file.name}`;
-    }).catch(() => {
+    }).catch((err) => {
+      debugMsg(`Autoplay failed: ${err.message}`, 'error');
       playerStatus.textContent = `Unable to autoplay ${track.file.name}; tap Play.`;
     });
   } else {
+    debugMsg('Not autoplaying, pausing audio', 'info');
     audio.pause();
     audio.currentTime = 0;
     playIcon.style.display = 'block';
@@ -199,10 +353,21 @@ function loadTrack(index, autoplay) {
 }
 
 fileInput.addEventListener('change', (event) => {
+  debugMsg('=== FILE SELECTION EVENT ===', 'info');
   const files = Array.from(event.target.files || []);
+  debugMsg(`Files selected: ${files.length}`, 'info');
+  
   if (!files.length) {
+    debugMsg('No files selected', 'warn');
     return;
   }
+
+  files.forEach((file, idx) => {
+    debugMsg(`File ${idx + 1}: ${file.name}`, 'info');
+    debugMsg(`  Size: ${file.size} bytes`, 'info');
+    debugMsg(`  Type: "${file.type || '(empty)'}"`, 'info');
+    debugMsg(`  Last Modified: ${new Date(file.lastModified).toISOString()}`, 'info');
+  });
 
   // Accept all audio and video files
   // Also accept files without MIME type if they have common audio/video extensions
@@ -212,26 +377,44 @@ fileInput.addEventListener('change', (event) => {
     
     // Check MIME type
     if (type && (type.startsWith('audio/') || type.startsWith('video/'))) {
+      debugMsg(`✓ ${file.name} accepted (MIME: ${type})`, 'success');
       return true;
     }
     
     // If no MIME type or unrecognized, check common extensions
     const audioVideoExtensions = /\.(mp3|wav|ogg|m4a|aac|flac|wma|aiff|ape|opus|webm|mp4|mov|avi|mkv|wmv|flv|3gp|m4v)$/i;
-    return audioVideoExtensions.test(name);
+    const matchResult = audioVideoExtensions.test(name);
+    
+    if (matchResult) {
+      debugMsg(`✓ ${file.name} accepted (extension match, MIME: ${type || 'none'})`, 'success');
+      return true;
+    }
+    
+    debugMsg(`✗ ${file.name} rejected (no MIME or extension match)`, 'error');
+    return false;
   });
+  
+  debugMsg(`Supported files: ${supported.length}/${files.length}`, supported.length > 0 ? 'success' : 'error');
   
   if (!supported.length) {
     playerStatus.textContent = 'No supported audio or video files selected.';
+    debugMsg('No supported files to add', 'error');
     return;
   }
 
   supported.forEach((file) => {
-    const url = URL.createObjectURL(file);
-    playlist.push({ file, url });
+    try {
+      const url = URL.createObjectURL(file);
+      debugMsg(`Created object URL for ${file.name}: ${url.substring(0, 50)}...`, 'success');
+      playlist.push({ file, url });
+    } catch (err) {
+      debugMsg(`Failed to create URL for ${file.name}: ${err.message}`, 'error');
+    }
   });
 
   if (currentTrackIndex === -1 && playlist.length > 0) {
     currentTrackIndex = 0;
+    debugMsg(`Loading first track (index 0)`, 'info');
     loadTrack(0, false);
   }
 
@@ -239,6 +422,7 @@ fileInput.addEventListener('change', (event) => {
   playPauseBtn.disabled = false;
   stopBtn.disabled = false;
   playerStatus.textContent = `${supported.length} file(s) added. ${playlist.length} total in playlist.`;
+  debugMsg(`=== FILE SELECTION COMPLETE ===`, 'success');
 });
 
 playPauseBtn.addEventListener('click', () => {
