@@ -60,6 +60,7 @@ const metroToggleBtn = document.getElementById('metroToggleBtn');
 const metroStatus = document.getElementById('metroStatus');
 const beatCounterEl = document.getElementById('beatCounter');
 const bpmStepBtns = document.querySelectorAll('[data-bpm-step]');
+const tapTempoBtn = document.getElementById('tapTempoBtn');
 const metroVolumeSlider = document.getElementById('metroVolumeSlider');
 const metroVolumeValue = document.getElementById('metroVolumeValue');
 
@@ -782,11 +783,14 @@ let metronomeRunning = false;
 let beatCounter = 0;
 let nextBeatTime = 0;
 let schedulerTimer = null;
+let tapTimes = [];
 
 const TICK_FREQUENCY = 800;
 const CLAP_FREQUENCY = 1200;
 const SCHEDULE_AHEAD_TIME = 0.1;
 const SCHEDULER_INTERVAL = 25;
+const TAP_RESET_MS = 2000;
+const MAX_TAP_TIMES = 6;
 
 const TIME_SIGNATURES = {
   '2/4': { label: '2/4', noteValue: 4, beats: 2, accents: [0] },
@@ -1005,6 +1009,35 @@ function updateAccentToggleUi() {
   accentSelect.closest('.accent-group').classList.toggle('accent-disabled', !accentEnabled);
 }
 
+function handleTapTempo() {
+  const now = performance.now();
+  const lastTap = tapTimes[tapTimes.length - 1];
+
+  if (!lastTap || now - lastTap > TAP_RESET_MS) {
+    tapTimes = [now];
+    tapTempoBtn.classList.add('tap-active');
+    setTimeout(() => tapTempoBtn.classList.remove('tap-active'), 120);
+    return;
+  }
+
+  tapTimes.push(now);
+  if (tapTimes.length > MAX_TAP_TIMES) {
+    tapTimes.shift();
+  }
+
+  const intervals = [];
+  for (let i = 1; i < tapTimes.length; i += 1) {
+    intervals.push(tapTimes[i] - tapTimes[i - 1]);
+  }
+
+  const averageInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+  const tappedBpm = Math.round(60000 / averageInterval);
+  updateMetronomeBpm(tappedBpm);
+
+  tapTempoBtn.classList.add('tap-active');
+  setTimeout(() => tapTempoBtn.classList.remove('tap-active'), 120);
+}
+
 // BPM slider updates input
 bpmSlider.addEventListener('input', () => {
   updateMetronomeBpm(bpmSlider.value);
@@ -1027,6 +1060,8 @@ bpmStepBtns.forEach((button) => {
     updateMetronomeBpm(currentBpm + step);
   });
 });
+
+tapTempoBtn.addEventListener('click', handleTapTempo);
 
 accentSelect.addEventListener('change', () => {
   beatCounter = 0;

@@ -699,6 +699,44 @@ input[type="range"]::-moz-range-thumb:hover {
   transform: scale(0.98);
 }
 
+.tap-tempo-btn {
+  width: 100%;
+  max-width: 400px;
+  border: 3px solid transparent;
+  background:
+    var(--control-gradient),
+    linear-gradient(#EAF7FF, #D8F0FF) padding-box,
+    var(--blue-gradient) border-box;
+  color: var(--accent-blue);
+  border-radius: var(--radius-md);
+  padding: 42px 20px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: all 0.18s ease;
+  -webkit-text-fill-color: transparent;
+  background-clip: text, padding-box, border-box;
+  -webkit-background-clip: text, padding-box, border-box;
+}
+
+.tap-tempo-btn:hover {
+  background:
+    var(--control-gradient),
+    linear-gradient(#DDF2FF, #C9EAFF) padding-box,
+    var(--blue-gradient) border-box;
+  background-clip: text, padding-box, border-box;
+  -webkit-background-clip: text, padding-box, border-box;
+  transform: translateY(-1px);
+}
+
+.tap-tempo-btn:active,
+.tap-tempo-btn.tap-active {
+  transform: scale(0.98);
+  box-shadow: var(--shadow-sm);
+}
+
 .accent-group {
   display: flex;
   flex-direction: column;
