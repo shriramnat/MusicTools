@@ -4,33 +4,55 @@ const playerControls = document.getElementById('playerControls');
 const metronomeControls = document.getElementById('metronomeControls');
 const playlistEmpty = document.getElementById('playlistEmpty');
 
+const QUERY_PARAMETERS = {
+  app: {
+    defaultValue: 'player',
+    values: {
+      player: 'player',
+      metronome: 'metronome',
+    },
+  },
+};
+
+function getInitialAppFromQuery() {
+  const query = new URLSearchParams(window.location.search);
+  const appConfig = QUERY_PARAMETERS.app;
+  const appValue = query.get('app');
+
+  return appConfig.values[appValue] || appConfig.defaultValue;
+}
+
+function activateTab(tabName) {
+  const activeTab = Array.from(tabs).find((tab) => tab.dataset.tab === tabName) || tabs[0];
+
+  tabs.forEach((tab) => {
+    const isActive = tab === activeTab;
+    tab.classList.toggle('active', isActive);
+    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  panels.forEach((panel) => {
+    const isActive = panel.id === activeTab.dataset.tab;
+    panel.classList.toggle('active', isActive);
+    panel.hidden = !isActive;
+  });
+
+  if (activeTab.dataset.tab === 'player') {
+    playerControls.style.display = 'block';
+    metronomeControls.style.display = 'none';
+  } else {
+    playerControls.style.display = 'none';
+    metronomeControls.style.display = 'flex';
+  }
+}
+
 tabs.forEach((tab) => {
   tab.addEventListener('click', () => {
-    tabs.forEach((t) => {
-      t.classList.remove('active');
-      t.setAttribute('aria-selected', 'false');
-    });
-    panels.forEach((p) => {
-      p.classList.remove('active');
-      p.hidden = true;
-    });
-
-    tab.classList.add('active');
-    tab.setAttribute('aria-selected', 'true');
-    const panel = document.getElementById(tab.dataset.tab);
-    panel.classList.add('active');
-    panel.hidden = false;
-    
-    // Toggle control sections
-    if (tab.dataset.tab === 'player') {
-      playerControls.style.display = 'block';
-      metronomeControls.style.display = 'none';
-    } else {
-      playerControls.style.display = 'none';
-      metronomeControls.style.display = 'flex';
-    }
+    activateTab(tab.dataset.tab);
   });
 });
+
+activateTab(getInitialAppFromQuery());
 
 const fileInput = document.getElementById('fileInput');
 const playlistEl = document.getElementById('playlist');
