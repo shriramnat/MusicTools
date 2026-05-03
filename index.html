@@ -50,6 +50,13 @@
             </div>
             
             <input id="bpmSlider" type="range" min="1" max="300" step="1" value="120" class="bpm-slider" />
+
+            <div class="bpm-step-controls" aria-label="BPM quick adjust controls">
+              <button type="button" class="bpm-step-btn" data-bpm-step="-10">-10</button>
+              <button type="button" class="bpm-step-btn" data-bpm-step="-5">-5</button>
+              <button type="button" class="bpm-step-btn" data-bpm-step="5">+5</button>
+              <button type="button" class="bpm-step-btn" data-bpm-step="10">+10</button>
+            </div>
             
             <div class="accent-group">
               <label for="accentSelect">Accent Every</label>
@@ -63,6 +70,14 @@
                 <option value="7">7 beats</option>
                 <option value="8">8 beats</option>
               </select>
+            </div>
+
+            <div class="metronome-volume-group">
+              <label for="metroVolumeSlider">
+                <span>Volume</span>
+                <span id="metroVolumeValue">60%</span>
+              </label>
+              <input id="metroVolumeSlider" type="range" min="0" max="100" step="1" value="60" />
             </div>
             
             <div class="beat-counter" id="beatCounter">-</div>

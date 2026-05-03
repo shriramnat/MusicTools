@@ -615,6 +615,36 @@ input[type="range"]::-moz-range-thumb:hover {
   height: 8px;
 }
 
+.bpm-step-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 400px;
+}
+
+.bpm-step-btn {
+  border: 1px solid var(--border-gray);
+  background: var(--white);
+  color: var(--black);
+  border-radius: var(--radius-sm);
+  padding: 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bpm-step-btn:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.bpm-step-btn:active {
+  transform: scale(0.98);
+}
+
 .accent-group {
   display: flex;
   flex-direction: column;
@@ -647,6 +677,31 @@ input[type="range"]::-moz-range-thumb:hover {
 .accent-select:focus {
   outline: none;
   border-color: var(--accent-blue);
+}
+
+.metronome-volume-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 300px;
+}
+
+.metronome-volume-group label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  font-size: 14px;
+  color: var(--text-gray);
+  font-weight: 500;
+}
+
+#metroVolumeValue {
+  color: var(--black);
+  font-variant-numeric: tabular-nums;
+  min-width: 42px;
+  text-align: right;
 }
 
 .beat-counter {

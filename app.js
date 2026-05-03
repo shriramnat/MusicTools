@@ -57,6 +57,9 @@ const accentSelect = document.getElementById('accentSelect');
 const metroToggleBtn = document.getElementById('metroToggleBtn');
 const metroStatus = document.getElementById('metroStatus');
 const beatCounterEl = document.getElementById('beatCounter');
+const bpmStepBtns = document.querySelectorAll('[data-bpm-step]');
+const metroVolumeSlider = document.getElementById('metroVolumeSlider');
+const metroVolumeValue = document.getElementById('metroVolumeValue');
 
 const audio = new Audio();
 audio.preload = 'metadata';
@@ -698,6 +701,7 @@ function saveSettings() {
     localStorage.setItem('musicTools_volume', volumeSlider.value);
     localStorage.setItem('musicTools_bpm', bpmSlider.value);
     localStorage.setItem('musicTools_accent', accentSelect.value);
+    localStorage.setItem('musicTools_metronomeVolume', metroVolumeSlider.value);
   } catch (err) {
     console.warn('Failed to save settings:', err);
   }
@@ -709,6 +713,7 @@ function loadSettings() {
     const savedVolume = localStorage.getItem('musicTools_volume');
     const savedBpm = localStorage.getItem('musicTools_bpm');
     const savedAccent = localStorage.getItem('musicTools_accent');
+    const savedMetronomeVolume = localStorage.getItem('musicTools_metronomeVolume');
     
     if (savedSpeed !== null) {
       speedSlider.value = savedSpeed;
@@ -731,6 +736,12 @@ function loadSettings() {
     if (savedAccent !== null) {
       accentSelect.value = savedAccent;
     }
+
+    if (savedMetronomeVolume !== null) {
+      updateMetronomeVolume(savedMetronomeVolume, false);
+    } else {
+      updateMetronomeVolume(metroVolumeSlider.value, false);
+    }
   } catch (err) {
     console.warn('Failed to load settings:', err);
   }
@@ -749,6 +760,14 @@ const CLAP_FREQUENCY = 1200;
 const SCHEDULE_AHEAD_TIME = 0.1;
 const SCHEDULER_INTERVAL = 25;
 
+function getMetronomeVolumeGain() {
+  const volumePercent = Math.max(0, Math.min(100, Number(metroVolumeSlider.value) || 0));
+  if (volumePercent <= 50) {
+    return (volumePercent / 50) * 3.33;
+  }
+  return 3.33 + ((volumePercent - 50) / 50) * 3.67;
+}
+
 function ensureAudioContext() {
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -759,6 +778,11 @@ function ensureAudioContext() {
 }
 
 function playClick(time, accented) {
+  const volumeGain = getMetronomeVolumeGain();
+  if (volumeGain <= 0) {
+    return;
+  }
+
   if (accented) {
     // CLAP sound - combination of noise burst and low frequency punch
     
@@ -783,8 +807,8 @@ function playClick(time, accented) {
     
     // Noise envelope for sharp attack and quick decay
     const noiseGain = audioContext.createGain();
-    noiseGain.gain.setValueAtTime(0.4, time);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+    noiseGain.gain.setValueAtTime(0.4 * volumeGain, time);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01 * volumeGain, time + 0.05);
     noiseGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.15);
     
     // Low frequency "thump" for clap body
@@ -793,7 +817,7 @@ function playClick(time, accented) {
     lowOsc.type = 'sine';
     
     const lowGain = audioContext.createGain();
-    lowGain.gain.setValueAtTime(0.3, time);
+    lowGain.gain.setValueAtTime(0.3 * volumeGain, time);
     lowGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
     
     // Connect clap components
@@ -814,7 +838,7 @@ function playClick(time, accented) {
     osc.frequency.value = TICK_FREQUENCY;
 
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(0.2, time + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.2 * volumeGain, time + 0.005);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
 
     osc.connect(gain).connect(audioContext.destination);
@@ -873,29 +897,35 @@ function startMetronome() {
   metroStatus.textContent = `Running at ${bpmSlider.value} BPM.`;
 }
 
-// BPM slider updates input
-bpmSlider.addEventListener('input', () => {
-  bpmInput.value = bpmSlider.value;
+function updateMetronomeBpm(value) {
+  const clampedValue = Math.max(1, Math.min(300, Number(value) || 1));
+  bpmInput.value = clampedValue;
+  bpmSlider.value = clampedValue;
+
   if (metronomeRunning) {
-    metroStatus.textContent = `Running at ${bpmSlider.value} BPM.`;
+    metroStatus.textContent = `Running at ${clampedValue} BPM.`;
   }
   saveSettings();
+}
+
+function updateMetronomeVolume(value, shouldSave = true) {
+  const clampedValue = Math.max(0, Math.min(100, Number(value) || 0));
+  metroVolumeSlider.value = clampedValue;
+  metroVolumeValue.textContent = `${clampedValue}%`;
+
+  if (shouldSave) {
+    saveSettings();
+  }
+}
+
+// BPM slider updates input
+bpmSlider.addEventListener('input', () => {
+  updateMetronomeBpm(bpmSlider.value);
 });
 
 // BPM input updates slider
 bpmInput.addEventListener('input', () => {
-  let value = Number(bpmInput.value);
-  // Clamp value between 1 and 300
-  if (value < 1) value = 1;
-  if (value > 300) value = 300;
-  
-  bpmInput.value = value;
-  bpmSlider.value = value;
-  
-  if (metronomeRunning) {
-    metroStatus.textContent = `Running at ${value} BPM.`;
-  }
-  saveSettings();
+  updateMetronomeBpm(bpmInput.value);
 });
 
 // Select all text when BPM input is focused
@@ -903,11 +933,23 @@ bpmInput.addEventListener('focus', () => {
   bpmInput.select();
 });
 
+bpmStepBtns.forEach((button) => {
+  button.addEventListener('click', () => {
+    const step = Number(button.dataset.bpmStep);
+    const currentBpm = Number(bpmSlider.value);
+    updateMetronomeBpm(currentBpm + step);
+  });
+});
+
 accentSelect.addEventListener('change', () => {
   beatCounter = 0; // Reset counter when accent changes
   beatCounterEl.textContent = '-';
   beatCounterEl.classList.remove('accent');
   saveSettings();
+});
+
+metroVolumeSlider.addEventListener('input', () => {
+  updateMetronomeVolume(metroVolumeSlider.value);
 });
 
 metroToggleBtn.addEventListener('click', () => {
