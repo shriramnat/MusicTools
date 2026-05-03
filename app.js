@@ -54,6 +54,8 @@ const playerStatus = document.getElementById('playerStatus');
 const bpmSlider = document.getElementById('bpmSlider');
 const bpmInput = document.getElementById('bpmInput');
 const accentSelect = document.getElementById('accentSelect');
+const accentToggle = document.getElementById('accentToggle');
+const accentToggleText = document.getElementById('accentToggleText');
 const metroToggleBtn = document.getElementById('metroToggleBtn');
 const metroStatus = document.getElementById('metroStatus');
 const beatCounterEl = document.getElementById('beatCounter');
@@ -76,6 +78,23 @@ function log(...args) {
   if (DEBUG) {
     console.log('[MusicTools]', ...args);
   }
+}
+
+function updateRangeFill(slider) {
+  const min = Number(slider.min) || 0;
+  const max = Number(slider.max) || 100;
+  const value = Number(slider.value) || 0;
+  const progress = ((value - min) / (max - min)) * 100;
+  slider.style.setProperty('--range-progress', `${Math.max(0, Math.min(100, progress))}%`);
+}
+
+function initRangeFills() {
+  document.querySelectorAll('input[type="range"]').forEach((slider) => {
+    updateRangeFill(slider);
+    slider.addEventListener('input', () => {
+      updateRangeFill(slider);
+    });
+  });
 }
 
 // Helper function to detect if browser is Edge
@@ -346,6 +365,7 @@ stopBtn.addEventListener('click', () => {
 speedSlider.addEventListener('input', () => {
   speedValue.textContent = `${Number(speedSlider.value).toFixed(1)}x`;
   audio.playbackRate = Number(speedSlider.value);
+  updateRangeFill(speedSlider);
   saveSettings();
 });
 
@@ -353,6 +373,7 @@ volumeSlider.addEventListener('input', () => {
   const volume = Number(volumeSlider.value) / 100;
   audio.volume = volume;
   volumeValue.textContent = `${volumeSlider.value}%`;
+  updateRangeFill(volumeSlider);
   saveSettings();
 });
 
@@ -701,6 +722,7 @@ function saveSettings() {
     localStorage.setItem('musicTools_volume', volumeSlider.value);
     localStorage.setItem('musicTools_bpm', bpmSlider.value);
     localStorage.setItem('musicTools_accent', accentSelect.value);
+    localStorage.setItem('musicTools_accentEnabled', accentToggle.checked ? '1' : '0');
     localStorage.setItem('musicTools_metronomeVolume', metroVolumeSlider.value);
   } catch (err) {
     console.warn('Failed to save settings:', err);
@@ -713,12 +735,14 @@ function loadSettings() {
     const savedVolume = localStorage.getItem('musicTools_volume');
     const savedBpm = localStorage.getItem('musicTools_bpm');
     const savedAccent = localStorage.getItem('musicTools_accent');
+    const savedAccentEnabled = localStorage.getItem('musicTools_accentEnabled');
     const savedMetronomeVolume = localStorage.getItem('musicTools_metronomeVolume');
     
     if (savedSpeed !== null) {
       speedSlider.value = savedSpeed;
       speedValue.textContent = `${Number(savedSpeed).toFixed(1)}x`;
       audio.playbackRate = Number(savedSpeed);
+      updateRangeFill(speedSlider);
     }
     
     if (savedVolume !== null) {
@@ -726,15 +750,21 @@ function loadSettings() {
       const volume = Number(savedVolume) / 100;
       audio.volume = volume;
       volumeValue.textContent = `${savedVolume}%`;
+      updateRangeFill(volumeSlider);
     }
     
     if (savedBpm !== null) {
       bpmSlider.value = savedBpm;
       bpmInput.value = savedBpm;
+      updateRangeFill(bpmSlider);
     }
     
     if (savedAccent !== null) {
-      accentSelect.value = savedAccent;
+      accentSelect.value = normalizeSavedTimeSignature(savedAccent);
+    }
+
+    if (savedAccentEnabled !== null) {
+      accentToggle.checked = savedAccentEnabled === '1';
     }
 
     if (savedMetronomeVolume !== null) {
@@ -747,8 +777,6 @@ function loadSettings() {
   }
 }
 
-loadSettings();
-
 let audioContext;
 let metronomeRunning = false;
 let beatCounter = 0;
@@ -759,6 +787,50 @@ const TICK_FREQUENCY = 800;
 const CLAP_FREQUENCY = 1200;
 const SCHEDULE_AHEAD_TIME = 0.1;
 const SCHEDULER_INTERVAL = 25;
+
+const TIME_SIGNATURES = {
+  '2/4': { label: '2/4', noteValue: 4, beats: 2, accents: [0] },
+  '3/4': { label: '3/4', noteValue: 4, beats: 3, accents: [0] },
+  '4/4': { label: '4/4', noteValue: 4, beats: 4, accents: [0] },
+  '5/4': { label: '5/4', noteValue: 4, beats: 5, accents: [0, 3] },
+  '5/8': { label: '5/8', noteValue: 8, beats: 5, accents: [0, 2] },
+  '6/8': { label: '6/8', noteValue: 8, beats: 6, accents: [0, 3] },
+  '6/8-dotted': { label: '6/8 ♩.', noteValue: 4, beats: 2, accents: [0] },
+  '7/8': { label: '7/8', noteValue: 8, beats: 7, accents: [0, 2, 4] },
+  '8/8': { label: '8/8', noteValue: 8, beats: 8, accents: [0, 3, 6] },
+  '9/8': { label: '9/8', noteValue: 8, beats: 9, accents: [0, 3, 6] },
+  '9/8-dotted': { label: '9/8 ♩.', noteValue: 4, beats: 3, accents: [0] },
+  '10/8': { label: '10/8', noteValue: 8, beats: 10, accents: [0, 3, 6, 8] },
+  '11/8': { label: '11/8', noteValue: 8, beats: 11, accents: [0, 3, 6, 8] },
+  '12/8': { label: '12/8', noteValue: 8, beats: 12, accents: [0, 3, 6, 9] },
+  '12/8-dotted': { label: '12/8 ♩.', noteValue: 4, beats: 4, accents: [0] },
+  '13/8': { label: '13/8', noteValue: 8, beats: 13, accents: [0, 3, 6, 9, 11] },
+};
+
+const LEGACY_TIME_SIGNATURES = {
+  0: '4/4',
+  2: '2/4',
+  3: '3/4',
+  4: '4/4',
+  5: '5/4',
+  6: '6/8',
+  7: '7/8',
+  8: '8/8',
+};
+
+function normalizeSavedTimeSignature(value) {
+  if (TIME_SIGNATURES[value]) {
+    return value;
+  }
+  return LEGACY_TIME_SIGNATURES[value] || '4/4';
+}
+
+function getSelectedTimeSignature() {
+  return TIME_SIGNATURES[accentSelect.value] || TIME_SIGNATURES['4/4'];
+}
+
+loadSettings();
+updateAccentToggleUi();
 
 function getMetronomeVolumeGain() {
   const volumePercent = Math.max(0, Math.min(100, Number(metroVolumeSlider.value) || 0));
@@ -849,12 +921,13 @@ function playClick(time, accented) {
 
 function scheduleBeats() {
   const bpm = Number(bpmSlider.value);
-  const accentInterval = Number(accentSelect.value);
-  const beatInterval = 60.0 / bpm;
+  const timeSignature = getSelectedTimeSignature();
+  const beatInterval = (60.0 / bpm) * (4 / timeSignature.noteValue);
+  const accentEnabled = accentToggle.checked;
 
   while (nextBeatTime < audioContext.currentTime + SCHEDULE_AHEAD_TIME) {
-    // Clap on the FIRST beat of each measure (when beatCounter % accentInterval === 0)
-    const isAccented = accentInterval !== 0 && beatCounter % accentInterval === 0;
+    const beatInMeasure = beatCounter % timeSignature.beats;
+    const isAccented = accentEnabled && timeSignature.accents.includes(beatInMeasure);
     playClick(nextBeatTime, isAccented);
     
     // Schedule beat counter update to match the actual beat time
@@ -884,26 +957,30 @@ function stopMetronome() {
     schedulerTimer = null;
   }
   metroToggleBtn.textContent = 'Start';
+  metroToggleBtn.classList.remove('is-running');
   metroStatus.textContent = 'Stopped.';
 }
 
 function startMetronome() {
   ensureAudioContext();
+  const timeSignature = getSelectedTimeSignature();
   beatCounter = 0;
   nextBeatTime = audioContext.currentTime;
   metronomeRunning = true;
   startScheduler();
   metroToggleBtn.textContent = 'Stop';
-  metroStatus.textContent = `Running at ${bpmSlider.value} BPM.`;
+  metroToggleBtn.classList.add('is-running');
+  metroStatus.textContent = `Running at ${bpmSlider.value} BPM in ${timeSignature.label}.`;
 }
 
 function updateMetronomeBpm(value) {
   const clampedValue = Math.max(1, Math.min(300, Number(value) || 1));
   bpmInput.value = clampedValue;
   bpmSlider.value = clampedValue;
+  updateRangeFill(bpmSlider);
 
   if (metronomeRunning) {
-    metroStatus.textContent = `Running at ${clampedValue} BPM.`;
+    metroStatus.textContent = `Running at ${clampedValue} BPM in ${getSelectedTimeSignature().label}.`;
   }
   saveSettings();
 }
@@ -912,10 +989,20 @@ function updateMetronomeVolume(value, shouldSave = true) {
   const clampedValue = Math.max(0, Math.min(100, Number(value) || 0));
   metroVolumeSlider.value = clampedValue;
   metroVolumeValue.textContent = `${clampedValue}%`;
+  updateRangeFill(metroVolumeSlider);
 
   if (shouldSave) {
     saveSettings();
   }
+}
+
+function updateAccentToggleUi() {
+  const accentEnabled = accentToggle.checked;
+  accentToggleText.textContent = accentEnabled ? 'Accent On' : 'Accent Off';
+  accentToggle.setAttribute('aria-checked', accentEnabled ? 'true' : 'false');
+  accentSelect.hidden = !accentEnabled;
+  accentSelect.disabled = !accentEnabled;
+  accentSelect.closest('.accent-group').classList.toggle('accent-disabled', !accentEnabled);
 }
 
 // BPM slider updates input
@@ -942,9 +1029,18 @@ bpmStepBtns.forEach((button) => {
 });
 
 accentSelect.addEventListener('change', () => {
-  beatCounter = 0; // Reset counter when accent changes
+  beatCounter = 0;
   beatCounterEl.textContent = '-';
   beatCounterEl.classList.remove('accent');
+  if (metronomeRunning) {
+    metroStatus.textContent = `Running at ${bpmSlider.value} BPM in ${getSelectedTimeSignature().label}.`;
+  }
+  saveSettings();
+});
+
+accentToggle.addEventListener('change', () => {
+  beatCounterEl.classList.remove('accent');
+  updateAccentToggleUi();
   saveSettings();
 });
 
@@ -962,16 +1058,15 @@ metroToggleBtn.addEventListener('click', () => {
 
 // Update beat counter display
 function updateBeatDisplay(beatNum, isAccented) {
-  const accentInterval = Number(accentSelect.value);
-  
-  if (accentInterval === 0 || !metronomeRunning) {
+  if (!metronomeRunning) {
     beatCounterEl.textContent = '-';
     beatCounterEl.classList.remove('accent');
     return;
   }
+
+  const timeSignature = getSelectedTimeSignature();
+  const currentBeat = (beatNum % timeSignature.beats) + 1;
   
-  // Calculate which beat number to display (1-based)
-  const currentBeat = (beatNum % accentInterval) + 1;
   beatCounterEl.textContent = currentBeat;
   
   // Highlight on first beat (clap)
@@ -997,6 +1092,7 @@ function calculateAndApplyBpmSpeed() {
     // Update the speed slider and display
     speedSlider.value = clampedSpeed.toFixed(1);
     speedValue.textContent = `${clampedSpeed.toFixed(1)}x`;
+    updateRangeFill(speedSlider);
     
     // Apply to audio playback
     audio.playbackRate = clampedSpeed;
@@ -1060,3 +1156,4 @@ function loadBpmValues() {
 
 // Load BPM values on initialization
 loadBpmValues();
+initRangeFills();
